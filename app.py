@@ -72,57 +72,40 @@ class CloudJobAgent:
             st.error(f"Search error: {e}")
             
         return jobs
-    
     def search_remoteok(self):
-        """Search Remote OK API"""
-        try:
-            url = "https://remoteok.io/api?tags=devops&tags=it"
-            headers = {'User-Agent': 'Mozilla/5.0'}
-            response = requests.get(url, headers=headers, timeout=10)
+    """Search Remote OK API"""
+    try:
+        url = "https://remoteok.io/api?tags=devops&tags=it"
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        response = requests.get(url, headers=headers, timeout=10)
+        
+        if response.status_code == 200:
+            jobs_data = response.json()
+            filtered_jobs = []
             
-            if response.status_code == 200:
-                jobs_data = response.json()
-                filtered_jobs = []
-                
-                for job in jobs_data[1:11]:  # First 10 jobs
-                    if job.get('position'):
-                        # Filter for Samuel's skills
-                        description = f"{job.get('position', '')} {job.get('description', '')}".lower()
-                        relevant_skills = ['network', 'system', 'cloud', 'sharepoint', 'aws', 'linux', 'voip', 'administrator']
-                        
-                        if any(skill in description for skill in relevant_skills):
-                            filtered_jobs.append({
-                                'title': job.get('position', ''),
-                                'company': job.get('company', ''),
-                                'description': job.get('description', '')[:200] + '...',
-                                'url': f"https://remoteok.io/l/{job.get('id', '')}",
-                                'platform': 'Remote OK',
-                                'date_found': datetime.now().strftime('%Y-%m-%d')
-                            })
-                
-                return filtered_jobs
-                # Display found jobs
-if st.button("Show Found Jobs"):
-    if jobs_data:
-        st.subheader("Found Jobs")
-        for i, job in enumerate(jobs_data):
-            with st.expander(f"{job.get('title', 'No Title')} - {job.get('company', 'Unknown Company')}"):
-                st.write(f"**Company:** {job.get('company', 'N/A')}")
-                st.write(f"**Position:** {job.get('title', 'N/A')}")
-                st.write(f"**Location:** {job.get('location', 'N/A')}")
-                st.write(f"**Salary:** {job.get('salary', 'N/A')}")
-                st.write(f"**Description:** {job.get('description', 'N/A')}")
-                st.write(f"**URL:** {job.get('url', 'N/A')}")
-                
-                # Add apply button for each job
-                if st.button(f"Apply to this Position", key=f"apply_{i}"):
-                    st.session_state.selected_job = job
-                    st.rerun()
-    else:
-        st.warning("No jobs found. Try different search terms.")
-        except:
-            return []
+            for job in jobs_data[1:11]:  # First 10 jobs
+                if job.get('position'):
+                    # Filter for Samuel's skills
+                    description = f"{job.get('position', '')} {job.get('description', '')}".lower()
+                    relevant_skills = ['network', 'system', 'cloud', 'sharepoint', 'aws', 'linux', 'voip', 'administrator']
+                    
+                    if any(skill in description for skill in relevant_skills):
+                        filtered_jobs.append({
+                            'title': job.get('position', ''),
+                            'company': job.get('company', ''),
+                            'description': job.get('description', '')[:200] + '...',
+                            'url': f"https://remoteok.io/l/{job.get('id', '')}",
+                            'platform': 'Remote OK',
+                            'date_found': datetime.now().strftime('%Y-%m-%d')
+                        })
+            
+            return filtered_jobs
+    except Exception as e:
+        st.error(f"Remote OK search error: {e}")
         return []
+    
+    return []
+  
     def calculate_match_score(self, job_description):
         """Calculate job match score"""
         job_desc_lower = job_description.lower()
