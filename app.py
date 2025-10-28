@@ -4,7 +4,10 @@ import json
 import pandas as pd
 from datetime import datetime
 import smtplib
-from email.mime.text import MiMEText
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
 
 # Page configuration
 st.set_page_config(
