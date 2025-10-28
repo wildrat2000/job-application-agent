@@ -101,10 +101,28 @@ class CloudJobAgent:
                             })
                 
                 return filtered_jobs
+                # Display found jobs
+if st.button("Show Found Jobs"):
+    if jobs_data:
+        st.subheader("Found Jobs")
+        for i, job in enumerate(jobs_data):
+            with st.expander(f"{job.get('title', 'No Title')} - {job.get('company', 'Unknown Company')}"):
+                st.write(f"**Company:** {job.get('company', 'N/A')}")
+                st.write(f"**Position:** {job.get('title', 'N/A')}")
+                st.write(f"**Location:** {job.get('location', 'N/A')}")
+                st.write(f"**Salary:** {job.get('salary', 'N/A')}")
+                st.write(f"**Description:** {job.get('description', 'N/A')}")
+                st.write(f"**URL:** {job.get('url', 'N/A')}")
+                
+                # Add apply button for each job
+                if st.button(f"Apply to this Position", key=f"apply_{i}"):
+                    st.session_state.selected_job = job
+                    st.rerun()
+    else:
+        st.warning("No jobs found. Try different search terms.")
         except:
             return []
         return []
-    
     def calculate_match_score(self, job_description):
         """Calculate job match score"""
         job_desc_lower = job_description.lower()
