@@ -72,40 +72,41 @@ class CloudJobAgent:
             st.error(f"Search error: {e}")
             
         return jobs
+    
     def search_remoteok(self):
-    """Search Remote OK API"""
-    try:
-        url = "https://remoteok.io/api?tags=devops&tags=it"
-        headers = {'User-Agent': 'Mozilla/5.0'}
-        response = requests.get(url, headers=headers, timeout=10)
+        """Search Remote OK API"""
+        try:
+            url = "https://remoteok.io/api?tags=devops&tags=it"
+            headers = {'User-Agent': 'Mozilla/5.0'}
+            response = requests.get(url, headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                jobs_data = response.json()
+                filtered_jobs = []
+                
+                for job in jobs_data[1:11]:  # First 10 jobs
+                    if job.get('position'):
+                        # Filter for Samuel's skills
+                        description = f"{job.get('position', '')} {job.get('description', '')}".lower()
+                        relevant_skills = ['network', 'system', 'cloud', 'sharepoint', 'aws', 'linux', 'voip', 'administrator']
+                        
+                        if any(skill in description for skill in relevant_skills):
+                            filtered_jobs.append({
+                                'title': job.get('position', ''),
+                                'company': job.get('company', ''),
+                                'description': job.get('description', '')[:200] + '...',
+                                'url': f"https://remoteok.io/l/{job.get('id', '')}",
+                                'platform': 'Remote OK',
+                                'date_found': datetime.now().strftime('%Y-%m-%d')
+                            })
+                
+                return filtered_jobs
+        except Exception as e:
+            st.error(f"Remote OK search error: {e}")
+            return []
         
-        if response.status_code == 200:
-            jobs_data = response.json()
-            filtered_jobs = []
-            
-            for job in jobs_data[1:11]:  # First 10 jobs
-                if job.get('position'):
-                    # Filter for Samuel's skills
-                    description = f"{job.get('position', '')} {job.get('description', '')}".lower()
-                    relevant_skills = ['network', 'system', 'cloud', 'sharepoint', 'aws', 'linux', 'voip', 'administrator']
-                    
-                    if any(skill in description for skill in relevant_skills):
-                        filtered_jobs.append({
-                            'title': job.get('position', ''),
-                            'company': job.get('company', ''),
-                            'description': job.get('description', '')[:200] + '...',
-                            'url': f"https://remoteok.io/l/{job.get('id', '')}",
-                            'platform': 'Remote OK',
-                            'date_found': datetime.now().strftime('%Y-%m-%d')
-                        })
-            
-            return filtered_jobs
-    except Exception as e:
-        st.error(f"Remote OK search error: {e}")
         return []
     
-    return []
-  
     def calculate_match_score(self, job_description):
         """Calculate job match score"""
         job_desc_lower = job_description.lower()
@@ -198,6 +199,7 @@ def main():
         if st.button("🎯 Search Jobs", type="primary"):
             with st.spinner("Searching for matching jobs..."):
                 jobs = agent.search_remote_jobs(platforms)
+                st.session_state.jobs_data = jobs  # Store jobs in session state
                 
                 if jobs:
                     st.success(f"Found {len(jobs)} relevant jobs!")
@@ -218,7 +220,7 @@ def main():
                                 """, unsafe_allow_html=True)
                                 
                                 # Application buttons
-                                col1, col2 = st.columns([1, 1])
+                                col1, col2, col3 = st.columns([1, 1, 1])
                                 with col1:
                                     if st.button(f"Generate Cover Letter", key=f"letter_{i}"):
                                         cover_letter, _ = agent.generate_cover_letter(
@@ -234,6 +236,12 @@ def main():
                                         st.session_state.saved_jobs.append(job)
                                         st.success("Job saved!")
                                 
+                                with col3:
+                                    if st.button("Quick Apply", key=f"apply_{i}", type="primary"):
+                                        st.session_state.selected_job = job
+                                        st.session_state.show_quick_apply = True
+                                        st.rerun()
+                                
                                 # Show cover letter if generated
                                 if f'cover_letter_{i}' in st.session_state:
                                     st.text_area("Generated Cover Letter", 
@@ -244,6 +252,49 @@ def main():
                                 st.markdown("---")
                 else:
                     st.warning("No jobs found. Try different platforms or check your connection.")
+        
+        # Quick Apply Section
+        if st.session_state.get('show_quick_apply') and st.session_state.get('selected_job'):
+            job = st.session_state.selected_job
+            st.subheader(f"🚀 Quick Apply: {job['title']} at {job['company']}")
+            
+            # Pre-filled application form
+            with st.form("quick_apply_form"):
+                st.write("### Application Details")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    user_name = st.text_input("Your Name", value="Samuel Mbugua Wambaa")
+                    user_email = st.text_input("Your Email", value="swambaa@gmail.com")
+                with col2:
+                    user_phone = st.text_input("Your Phone", value="+254 721 219359")
+                    user_linkedin = st.text_input("LinkedIn", value="linkedin.com/in/samuel-wambaa-974a06373")
+                
+                # Auto-generate cover letter
+                cover_letter, match_score = agent.generate_cover_letter(
+                    job['title'], job['company'], job['description']
+                )
+                
+                st.metric("Job Match Score", f"{match_score:.1f}%")
+                st.text_area("Cover Letter", cover_letter, height=300)
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.form_submit_button("📧 Send Application"):
+                        st.success("Application ready to send! (Email integration needed)")
+                        # Here you would integrate with your email sending function
+                        
+                with col2:
+                    if st.form_submit_button("📥 Save for Later"):
+                        if 'saved_jobs' not in st.session_state:
+                            st.session_state.saved_jobs = []
+                        st.session_state.saved_jobs.append(job)
+                        st.success("Job saved to applications!")
+            
+            if st.button("← Back to Job List"):
+                st.session_state.show_quick_apply = False
+                st.session_state.selected_job = None
+                st.rerun()
     
     with tab2:
         st.subheader("Application Dashboard")
